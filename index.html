@@ -1,0 +1,1849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>San Angeles Observation</title>
+<style>
+:root { color-scheme: dark; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: #000; color: #fff; font: 16px/1.5 system-ui, sans-serif; }
+
+#start { box-sizing: border-box; min-height: 100%; display: grid; align-content: center;
+         justify-items: center; gap: 1rem; padding: 2rem 1rem; text-align: center; }
+#start h1 { margin: 0; font-size: clamp(1.5rem, 6vw, 2.5rem); }
+#start p { margin: 0; max-width: 40rem; }
+#start button { min-block-size: 3rem; padding: 0.5rem 2rem; font: inherit; font-size: 1.25rem; cursor: pointer;
+                color: #000; background: #fff; border: 0; border-radius: 0.25rem; }
+#start button:disabled { cursor: default; opacity: 0.5; }
+#start .actions { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 1rem; }
+#start #moreButton { color: #fff; background: none; border: 2px solid #fff; }
+#start #moreButton:hover { background: #222; }
+#start button:focus-visible { outline: 3px solid #ff0055; outline-offset: 3px; }
+#start dl { display: grid; grid-template-columns: auto auto; gap: 0.25rem 1rem; margin: 0; text-align: left; }
+#start dt { text-align: right; }
+#start dd { margin: 0; }
+#start h2, #start h3 { margin: 0.5rem 0 0; font-size: 1rem; }
+#start #moreTitle { font-size: 1.5rem; }
+#start dialog { width: min(40rem, 100% - 2rem); box-sizing: border-box; padding: 1rem 1.5rem; }
+#start dialog form { margin-top: 1rem; }
+/* Without these, scrolling over the backdrop or in the dialog scrolls the page behind it. */
+dialog:modal { overscroll-behavior: contain; }
+dialog::backdrop { background: rgb(0 0 0 / 0.7); overflow: hidden; overscroll-behavior: contain; }
+#start { container-type: inline-size; }
+@container (max-width: 30rem) {
+  #start dl { grid-template-columns: minmax(0, 1fr); }
+  #start dt { text-align: start; margin-top: 0.5rem; }
+}
+kbd { font: 0.9em ui-monospace, Consolas, monospace; padding: 0 0.3em; border: 1px solid #888; border-radius: 0.25rem; }
+#error { color: #ff8080; }
+
+#stage { position: fixed; inset: 0; display: grid; place-items: center; background: #000; cursor: none; }
+#stage canvas { grid-area: 1 / 1; display: block; aspect-ratio: 4 / 3;
+                width: min(100vw, calc(100dvh * 4 / 3)); }
+#hud { pointer-events: none; }
+</style>
+</head>
+<body>
+
+<main id="start">
+  <h1>San Angeles Observation</h1>
+  <p>A 4k intro from 2005 (C, OpenGL, software synth), ported to the web. Turn the sound on.</p>
+  <p id="error" role="alert" hidden></p>
+  <div class="actions">
+    <button id="startButton" type="button">Click to start</button>
+    <button id="moreButton" type="button">More info</button>
+  </div>
+  <h2>Keys while playing</h2>
+  <dl>
+    <dt><kbd>Enter</kbd></dt><dd>Fullscreen (or double-click)</dd>
+    <dt><kbd>Esc</kbd></dt><dd>Stop</dd>
+    <dt><kbd>X</kbd></dt><dd>Debug mode with manual camera</dd>
+  </dl>
+  <h2>Keys in debug mode</h2>
+  <dl>
+    <dt><kbd>Up</kbd> <kbd>Down</kbd></dt><dd>Move forward, back</dd>
+    <dt><kbd>Left</kbd> <kbd>Right</kbd></dt><dd>Turn left, right</dd>
+    <dt><kbd>A</kbd> <kbd>D</kbd></dt><dd>Strafe left, right</dd>
+    <dt><kbd>PgUp</kbd> <kbd>PgDn</kbd></dt><dd>Move up, down</dd>
+    <dt><kbd>R</kbd> <kbd>F</kbd></dt><dd>Look up, down</dd>
+    <dt><kbd>J</kbd> <kbd>L</kbd> <kbd>I</kbd> <kbd>K</kbd></dt><dd>Move the cust marker</dd>
+    <dt><kbd>O</kbd></dt><dd>Move the cust marker to the view center</dd>
+    <dt><kbd>Space</kbd></dt><dd>Log the camera values to the console</dd>
+  </dl>
+  <dialog id="moreDialog" closedby="any" aria-labelledby="moreTitle">
+    <h2 id="moreTitle">More info</h2>
+    <h3>Credits</h3>
+    <dl>
+      <dt><a href="https://iki.fi/jetro/" target="_blank" rel="noopener">tonic</a></dt><dd>Code, models and design</dd>
+      <dt><a href="https://iki.fi/cube/" target="_blank" rel="noopener">!Cube</a></dt><dd>Music and synth code</dd>
+      <dt><a href="https://iki.fi/ase/" target="_blank" rel="noopener">stRana</a></dt><dd>Additional design, camera work</dd>
+    </dl>
+    <h3>Thanks and Acknowledgements</h3>
+    <dl>
+      <dt>Paul Bourke</dt><dd>Excellent and helpful resources on his home page</dd>
+      <dt>Johan Gielis</dt><dd>Discovered the superformula/supershape</dd>
+      <dt>Ector</dt><dd>We developed the synth using his synth as a base</dd>
+      <dt>Sol, n!ko, McLad, Phaser, XMunkki, Taumel, Mik, Random, Stallone, John Peeba, Tug, Hassu, Mental</dt>
+      <dd>Helpful input, beta testing, providing dll files</dd>
+    </dl>
+    <form method="dialog"><button autofocus>Close</button></form>
+  </dialog>
+  <p>Permalink: <a href="https://iki.fi/jetro/visuals/4k-intros/san-angeles-observation/web/">https://iki.fi/jetro/visuals/4k-intros/san-angeles-observation/web/</a></p>
+</main>
+
+<div id="stage" hidden>
+  <canvas id="screen" role="img" aria-label="Animated fly-through of a city of colorful supershape buildings, with music"></canvas>
+  <canvas id="hud" aria-hidden="true"></canvas>
+</div>
+
+<script>
+"use strict";
+/*
+ * San Angeles Observation 4k intro (2005), translated to modern web with agentic AI in November 2026,
+ * using Claude Code and Google "Modern Web Guidance 1.0".
+ *
+ * Source map (C files are in org-src/): main.c, app.c, cams.h, shapes-opt.h, minimath.h and the GL calls are here.
+ * synth.c is in the second script element (id "synth-source"), which runs in an AudioWorklet.
+ *
+ * Decisions:
+ * - WebGL2 replaces OpenGL 1.x. The gl* functions below keep the GL names and use one shader pair
+ *   that does the fixed-function lighting. GL_NORMALIZE, GL_LIGHT0..2, GL_COLOR_MATERIAL and
+ *   glShadeModel(GL_FLAT) are fixed in that shader. All quads of a shape share one normal and one color,
+ *   so flat and smooth shading look the same.
+ * - Display lists become static vertex buffers, built once.
+ * - The visual time "tick" comes from the audio clock, so the picture stays in sync with the music.
+ * - Start-up: the C code clears and swaps 4 times unless MINIMAL is defined (app.c). The port clears once.
+ *   The "4k RC3 (safe build)" text needs PREVIEW_BUILD and SAFE_BUILD (main.c). The port has no such text.
+ * - The Sleep(2000) before app_init in app.c is not in the port on purpose. app.h defines
+ *   NO_INTRO_START_DELAY, so no build of this source waits, and the browser needs no start delay.
+ * - glColor3f does not clamp: OpenGL 1.1 section 2.7 says values outside [0, 1] are not clamped.
+ *   The vertex shader clamps the lit color, as section 2.13.6 requires.
+ *
+ * Debug mode (C: _DEBUG and MANUAL_CAM) toggles at run time with the key X (DEBUG_KEY).
+ */
+
+/*
+BSD-style license for the "San Angeles Observation" source code
+---------------------------------------------------------------
+
+San Angeles Observation
+Copyright 2004-2005 Jetro Lauha, Toni Lönnberg, Sara Kapli (original)
+Copyright 2026 Jetro Lauha (web version)
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+    * Redistributions of source code must retain the above copyright
+      notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in
+      the documentation and/or other materials provided with the
+      distribution.
+    * Neither the name of the software product's copyright owner nor
+      the names of its contributors may be used to endorse or promote
+      products derived from this software without specific prior written
+      permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+--
+
+
+Note:
+Software synth is based on code by Henrik Rydgård (a.k.a. Ector).
+The original code had no explicit license, but we got a personal
+confirmation from him for permission to do "whatever you want" with
+the code.
+*/
+
+// ---------------------------------------------------------------------------
+// app.h, synth.h, cams.h, minimath.h constants
+// ---------------------------------------------------------------------------
+
+const WIDTH = 640;
+const HEIGHT = 480;
+const TEMPO = 7500;                                        // same as synth.h
+const CAMTRACK_LEN = Math.floor(TEMPO * 2000 * 16 / 44100); // integer division in C
+const INTRO_LENGTH = 20 * CAMTRACK_LEN;
+const FLT_EPSILON = 1.1920928955078125e-7;
+const PI = Math.fround(3.1415926535897932);                 // float in the C code
+const DEBUG_KEY = "KeyX";
+
+const GROUND_WOBBLE = true;
+const FLYING_SHIPS = true;
+
+// ---------------------------------------------------------------------------
+// minimath.h: the LCG that replaces rand()
+// ---------------------------------------------------------------------------
+
+let randseed = 0;
+
+function srand(seed) {
+  randseed = seed >>> 0;
+}
+
+function rand() {
+  randseed = (Math.imul(randseed, 0x343fd) + 0x269ec3) >>> 0;
+  return randseed >>> 16;
+}
+
+// ---------------------------------------------------------------------------
+// shapes-opt.h
+// ---------------------------------------------------------------------------
+
+const SUPERSHAPE_COUNT = 21;
+const SUPERSHAPE_PARAMS = 15;
+
+const QUANTIZED_STEP = Math.fround(0.050000);
+const QUANTIZED_MIN_VALUE = Math.fround(-98.050003);
+const QUANTIZED_DISTINCT_VALUE_COUNT = 58;
+
+const superShapes_opt = Array.from({ length: SUPERSHAPE_COUNT }, () => new Float32Array(SUPERSHAPE_PARAMS));
+const superShapes_opt_indices = [
+  [  38,  24,  28,  54,  24,   4,  36,  24,  24,   9,  24,  11,  48,  50,  28 ],
+  [   0,   0,   0,   0,   0,   0,  30,   0,   0,  38,   0,   0,   0,  48,  30 ],
+  [   0,   0,   0,  50,   0,   5,   0,   0,   0,   9,   8,   0,  53,  53,  24 ],
+  [  34,   0,  24,   0,   0,   3,  36,   0,   0,  21,  29,  19,  48,  48,   0 ],
+  [  30,   0,   0,  44,   0,  42,  39,   0,   0,   0,   0,   0,  42,  50,   0 ],
+  [  36,   0,   0,   0,   0,   6,  36,  28,   0,   9,  32,  22,  50,   0,   0 ],
+  [  40,   0,   0,   0,   0,   0,  40,  24,   0,  24,   0,  24,   0,   0,  34 ],
+  [  38,   0,  25,  10,  17,  51,  50,   0,   0,   2,  15,  13,   0,  57,  36 ],
+  [  35,   0,  24,  42,  12,   7,  34,   0,   0,   9,  31,  22,   0,  52,  30 ],
+  [  30,   0,   0,  38,  38,  38,  30,   0,   0,  38,  38,  38,  42,  48,  24 ],
+  [   0,   0,   0,  24,  24,  24,   0,   0,   0,  24,  24,  24,  38,  38,  28 ],
+  [  24,   0,   0,  47,  13,  41,   0,   0,   0,  38,  38,  38,  42,  48,   0 ],
+  [  28,   0,   0,  23,  20,  18,  29,   0,   0,  56,  56,  56,   0,  49,   0 ],
+  [  34,   0,   0,  24,  24,  24,   0,   0,   0,  24,  24,  24,  50,  50,   0 ],
+  [  29,   0,   0,   0,   0,   0,  34,   0,   0,  28,   0,   0,  42,  48,   0 ],
+  [  34,   0,   0,  34,  33,  56,   0,   0,   0,  43,  38,  38,  50,   0,   0 ],
+  [  29,   0,   0,  22,  27,  27,  28,   0,   0,  38,   0,   0,  48,   0,   0 ],
+  [  32,   0,   0,  17,   0,   0,  24,   0,   0,  20,  22,  22,   0,   0,  30 ],
+  [  28,   0,   0,  34,  33,  56,  34,   0,   0,  30,  38,  38,   0,   0,  24 ],
+  [  34,   0,   0,   9,  51,  17,  37,   0,  22,   1,  16,   4,  50,  55,  30 ],
+  [   0,   0,   0,   0,  54,  14,  35,   0,  24,  54,  26,  46,  45,  50,  24 ],
+];
+
+const quantizedDistinctValues = [
+  0, 1, 160, 400, 500, 700, 120, 10, 30, 20, 10, 2,
+  2, 1, 3, 2, 1, 1, 2, 1, 1, 2, 2, 4,
+  6, 2, 4, 8, 6, 20, 20, 10, 10, 10, 10, 20,
+  20, 20, 20, 40, 20, 120, 20, 100, 100, 40, 40, 80,
+  40, 200, 200, 200, 200, 40, 160, 20, 180, 1599,
+];
+
+function prepareSuperShapeArray() {
+  for (let a = 1; a < QUANTIZED_DISTINCT_VALUE_COUNT; ++a)
+    quantizedDistinctValues[a] += quantizedDistinctValues[a - 1];
+  for (let a = 0; a < SUPERSHAPE_COUNT; ++a) {
+    for (let b = 0; b < SUPERSHAPE_PARAMS; ++b) {
+      const index = superShapes_opt_indices[a][b];
+      // float arithmetic, as in the C code
+      superShapes_opt[a][b] = Math.fround(Math.fround(quantizedDistinctValues[index] * QUANTIZED_STEP) +
+                                          QUANTIZED_MIN_VALUE);
+      if (a === 0)
+        continue;
+      if (!index)
+        superShapes_opt[a][b] = superShapes_opt[a - 1][b];
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// cams.h
+// ---------------------------------------------------------------------------
+
+const camTracks = [
+  // goes by the simple obj
+  { src: [ 4500, 2700, 100, 70, -30 ], dest: [ 50, 50, -90, -100, 0 ], dist: 20, len: 1 },
+
+  // red building from inside
+  { src: [ -1448, 4294, 25, 363, 0 ], dest: [ -136, 202, 125, -98, 100 ], dist: 0, len: 1 },
+
+  // backwards looking at red building and trek fountain
+  { src: [ 1437, 4930, 200, -275, -20 ], dest: [ 1684, 0, 0, 9, 0 ], dist: 0, len: 1 },
+
+  // camera rotates inside heap building
+  { src: [ 1800, 3609, 200, 0, 675 ], dest: [ 0, 0, 0, 300, 0 ], dist: 0, len: 1 },
+
+  // inside starfish
+  { src: [ 923, 996, 10, 2336, -80 ], dest: [ 0, 0, 0, 0, 170 ], dist: 0, len: 1 },
+
+  // inside building with cone
+  { src: [ -1663, -43, 600, 2170, 0 ], dest: [ 20, 0, -600, 0, 100 ], dist: 0, len: 1 },
+
+  // camera rotates right
+  { src: [ 1049, -1420, 175, 2111, -17 ], dest: [ 0, 0, 0, -334, 0 ], dist: 0, len: 2 },
+
+  // rotating camera around big factory
+  { src: [ 0, 0, 50, 300, 25 ], dest: [ 0, 0, 0, 300, 0 ], dist: 70, len: 2 },
+
+  // high up to down at tall thin building and ship crossroads
+  { src: [ -473, -953, 3500, -353, -350 ], dest: [ 0, 0, -2800, 0, 0 ], dist: 0, len: 2 },
+
+  // forward near the ground, pass by fountain
+  { src: [ 191, 1938, 35, 1139, -17 ], dest: [ 1205, -2909, 0, 0, 0 ], dist: 0, len: 2 },
+
+  // strafe, a ship passes by
+  { src: [ -1449, -2700, 150, 0, 0 ], dest: [ 0, 2000, 0, 0, 0 ], dist: 0, len: 2 },
+
+  // look down from a bit higher and go forward (looking at shadow side of buildings)
+  { src: [ 5273, 4992, 650, 373, -50 ], dest: [ -4598, -3072, 0, 0, 0 ], dist: 0, len: 2 },
+
+  // ending view
+  { src: [ 3223, -3282, 875, -393, -25 ], dest: [ 1649, -1649, 0, 0, 0 ], dist: 0, len: 2 },
+];
+const CAMTRACK_COUNT = camTracks.length;
+
+// ---------------------------------------------------------------------------
+// Minimal GL layer on WebGL2: the GL calls used by main.c and app.c, with the same names.
+// Not implemented because the shader fixes them: GL_NORMALIZE, GL_LIGHT0..2, GL_COLOR_MATERIAL, glShadeModel.
+// ---------------------------------------------------------------------------
+
+const GL_POINTS = 0, GL_LINES = 1, GL_QUADS = 7;           // GL_QUADS is drawn as triangles
+const GL_MODELVIEW = 0x1700, GL_PROJECTION = 0x1701;
+const GL_LIGHTING = 0x0B50, GL_DEPTH_TEST = 0x0B71, GL_BLEND = 0x0BE2;
+const GL_LIGHT0 = 0x4000, GL_POSITION = 0x1203, GL_DIFFUSE = 0x1201, GL_SPECULAR = 0x1202;
+const GL_FRONT = 0x0404, GL_SHININESS = 0x1601;
+const GL_ZERO = 0, GL_SRC_COLOR = 0x0300;
+const GL_COLOR_BUFFER_BIT = 0x4000, GL_DEPTH_BUFFER_BIT = 0x0100;
+const GL_COMPILE = 0x1300;
+
+const canvas = document.getElementById("screen");
+const hud = document.getElementById("hud");
+const hudContext = hud.getContext("2d");
+let gl = null;
+let program = null;
+const uniforms = {};
+const FLOATS_PER_VERTEX = 9;                                // position, normal, color
+
+const VERTEX_SHADER = `#version 300 es
+in vec3 aPosition;
+in vec3 aNormal;
+in vec3 aColor;
+uniform mat4 uProjection;
+uniform mat4 uModelView;
+uniform bool uLighting;
+uniform vec3 uLightDir[3];      // eye space, unit length, directional lights
+uniform vec3 uLightDiffuse[3];
+uniform vec3 uSpecular;         // material specular, light 0 specular is white
+uniform float uShininess;
+uniform float uPointSize;
+flat out vec4 vColor;           // flat: GL_FLAT takes the last vertex of a primitive
+void main() {
+  gl_Position = uProjection * uModelView * vec4(aPosition, 1.0);
+  gl_PointSize = uPointSize;
+  if (uLighting) {
+    // GL_NORMALIZE. The model view only has rotations, mirroring and uniform scale, so mat3(uModelView)
+    // gives the same direction as the inverse transpose.
+    vec3 n = mat3(uModelView) * aNormal;
+    n *= inversesqrt(max(dot(n, n), 1e-30));
+    // GL_COLOR_MATERIAL: ambient and diffuse follow the color. Global ambient is 0.2, light ambient is 0.
+    vec3 c = 0.2 * aColor;
+    for (int i = 0; i < 3; ++i) {
+      float d = dot(n, uLightDir[i]);
+      if (d > 0.0) {
+        c += d * uLightDiffuse[i] * aColor;
+        if (i == 0) {         // only light 0 has a specular color
+          vec3 h = normalize(uLightDir[i] + vec3(0.0, 0.0, 1.0));  // not a local viewer
+          c += pow(max(dot(n, h), 0.0), uShininess) * uSpecular;
+        }
+      }
+    }
+    vColor = vec4(min(c, 1.0), 1.0);
+  } else {
+    vColor = vec4(aColor, 1.0);
+  }
+}`;
+
+const FRAGMENT_SHADER = `#version 300 es
+precision highp float;
+flat in vec4 vColor;
+out vec4 fragColor;
+void main() { fragColor = vColor; }`;
+
+function createProgram() {
+  const compile = (type, source) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+      throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  };
+  program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, VERTEX_SHADER));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAGMENT_SHADER));
+  gl.bindAttribLocation(program, 0, "aPosition");
+  gl.bindAttribLocation(program, 1, "aNormal");
+  gl.bindAttribLocation(program, 2, "aColor");
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+  for (const name of ["uProjection", "uModelView", "uLighting", "uLightDir", "uLightDiffuse", "uSpecular",
+                      "uShininess", "uPointSize"])
+    uniforms[name] = gl.getUniformLocation(program, name);
+}
+
+// --- matrix stacks (column-major, like OpenGL)
+
+const IDENTITY = [1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1];
+const matrixStacks = {
+  [GL_MODELVIEW]: [new Float64Array(IDENTITY)],
+  [GL_PROJECTION]: [new Float64Array(IDENTITY)],
+};
+let matrixMode = GL_MODELVIEW;
+
+function topMatrix() {
+  const stack = matrixStacks[matrixMode];
+  return stack[stack.length - 1];
+}
+
+function glMatrixMode(mode) { matrixMode = mode; }
+function glLoadIdentity() { topMatrix().set(IDENTITY); }
+function glPushMatrix() { const s = matrixStacks[matrixMode]; s.push(new Float64Array(s[s.length - 1])); }
+function glPopMatrix() { matrixStacks[matrixMode].pop(); }
+
+// top = top * m
+const multiplyScratch = new Float64Array(16);
+function glMultMatrixf(m) {
+  const t = topMatrix();
+  const r = multiplyScratch;
+  for (let col = 0; col < 4; ++col)
+    for (let row = 0; row < 4; ++row)
+      r[col * 4 + row] = t[row] * m[col * 4] + t[4 + row] * m[col * 4 + 1] +
+                         t[8 + row] * m[col * 4 + 2] + t[12 + row] * m[col * 4 + 3];
+  t.set(r);
+}
+
+function glTranslatef(x, y, z) {
+  glMultMatrixf([1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  x, y, z, 1]);
+}
+
+function glScalef(x, y, z) {
+  glMultMatrixf([x, 0, 0, 0,  0, y, 0, 0,  0, 0, z, 0,  0, 0, 0, 1]);
+}
+
+function glRotatef(angle, x, y, z) {
+  const len = Math.hypot(x, y, z);
+  x /= len; y /= len; z /= len;
+  const a = angle * Math.PI / 180;
+  const c = Math.cos(a), s = Math.sin(a), t = 1 - c;
+  glMultMatrixf([t * x * x + c,     t * x * y + s * z, t * x * z - s * y, 0,
+                 t * x * y - s * z, t * y * y + c,     t * y * z + s * x, 0,
+                 t * x * z + s * y, t * y * z - s * x, t * z * z + c,     0,
+                 0, 0, 0, 1]);
+}
+
+function gluPerspective(fovy, aspect, zNear, zFar) {
+  const f = 1 / Math.tan(fovy * Math.PI / 360);
+  glMultMatrixf([f / aspect, 0, 0, 0,
+                 0, f, 0, 0,
+                 0, 0, (zFar + zNear) / (zNear - zFar), -1,
+                 0, 0, 2 * zFar * zNear / (zNear - zFar), 0]);
+}
+
+function gluLookAt(eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ) {
+  let fx = centerX - eyeX, fy = centerY - eyeY, fz = centerZ - eyeZ;
+  const fl = Math.hypot(fx, fy, fz);
+  fx /= fl; fy /= fl; fz /= fl;
+  let sx = fy * upZ - fz * upY, sy = fz * upX - fx * upZ, sz = fx * upY - fy * upX;   // f x up
+  const sl = Math.hypot(sx, sy, sz);
+  sx /= sl; sy /= sl; sz /= sl;
+  const ux = sy * fz - sz * fy, uy = sz * fx - sx * fz, uz = sx * fy - sy * fx;       // s x f
+  glMultMatrixf([sx, ux, -fx, 0,  sy, uy, -fy, 0,  sz, uz, -fz, 0,  0, 0, 0, 1]);
+  glTranslatef(-eyeX, -eyeY, -eyeZ);
+}
+
+// --- state
+
+let lightingEnabled = true;
+const lightDirections = new Float32Array(9);                // eye space, one vec3 per light
+const lightDiffuse = new Float32Array(9);
+let pointSize = 1;
+let pixelScale = 1;                                         // canvas pixels per original pixel
+
+function glEnable(cap) {
+  if (cap === GL_LIGHTING) lightingEnabled = true;
+  else gl.enable(cap);
+}
+
+function glDisable(cap) {
+  if (cap === GL_LIGHTING) lightingEnabled = false;
+  else gl.disable(cap);
+}
+
+function glClearColor(r, g, b, a) { gl.clearColor(r, g, b, a); }
+function glClear(mask) { gl.clear(mask); }
+function glBlendFunc(sfactor, dfactor) { gl.blendFunc(sfactor, dfactor); }
+function glPointSize(size) { pointSize = size; }
+function glLineWidth() { /* WebGL draws 1 pixel wide lines only */ }
+
+// The light position is transformed by the model view matrix of the call time.
+// The lights are directional (w = 0), so only the rotation part counts.
+function glLightfv(light, pname, v, offset = 0) {
+  const i = light - GL_LIGHT0;
+  if (pname === GL_POSITION) {
+    const m = topMatrix();
+    const x = v[offset], y = v[offset + 1], z = v[offset + 2];
+    const e = [m[0] * x + m[4] * y + m[8] * z, m[1] * x + m[5] * y + m[9] * z, m[2] * x + m[6] * y + m[10] * z];
+    const len = Math.hypot(e[0], e[1], e[2]);
+    lightDirections.set(e.map((c) => c / len), i * 3);
+    gl.uniform3fv(uniforms.uLightDir, lightDirections);
+  } else if (pname === GL_DIFFUSE) {
+    lightDiffuse.set([v[offset], v[offset + 1], v[offset + 2]], i * 3);
+    gl.uniform3fv(uniforms.uLightDiffuse, lightDiffuse);
+  }
+}
+
+function glMaterialfv(face, pname, v, offset = 0) {
+  if (pname === GL_SPECULAR)
+    gl.uniform3f(uniforms.uSpecular, v[offset], v[offset + 1], v[offset + 2]);
+}
+
+function glMaterialf(face, pname, value) {
+  if (pname === GL_SHININESS)
+    gl.uniform1f(uniforms.uShininess, value);
+}
+
+// --- immediate mode, recorded into display lists or drawn at once
+
+let currentColor = [1, 1, 1];
+let currentNormal = [0, 0, 1];
+let beginMode = 0;
+const beginVertices = [];                                   // scratch arrays, reused by every glBegin and glEnd
+const triangleVertices = [];
+let currentList = null;
+const displayLists = new Map();
+let immediateVao = null;
+let immediateBuffer = null;
+
+// No clamp: OpenGL 1.1 spec section 2.7, "Values outside [0, 1] are not clamped". The clamp comes after lighting (2.13.6).
+function glColor3f(r, g, b) { currentColor = [r, g, b]; }
+function glColor3ubv(c) { currentColor = [c[0] / 255, c[1] / 255, c[2] / 255]; }
+function glNormal3fv(n) { currentNormal = n; }
+function glBegin(mode) { beginMode = mode; beginVertices.length = 0; }
+
+function glVertex3f(x, y, z) {
+  beginVertices.push(x, y, z, ...currentNormal, ...currentColor);
+}
+function glVertex3d(x, y, z) { glVertex3f(x, y, z); }
+function glVertex3fv(v) { glVertex3f(v[0], v[1], v[2]); }
+function glVertex2fv(v) { glVertex3f(v[0], v[1], 0); }
+function glVertex2i(x, y) { glVertex3f(x, y, 0); }
+
+function createVertexArray(buffer) {
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  const stride = FLOATS_PER_VERTEX * 4;
+  for (let a = 0; a < 3; ++a) {
+    gl.enableVertexAttribArray(a);
+    gl.vertexAttribPointer(a, 3, gl.FLOAT, false, stride, a * 12);
+  }
+  return vao;
+}
+
+// Sets the uniforms that depend on the GL state and draws one vertex array.
+const matrixScratch = new Float32Array(16);
+function drawVertices(mode, first, count) {
+  const f32 = matrixScratch;
+  f32.set(matrixStacks[GL_PROJECTION].at(-1));
+  gl.uniformMatrix4fv(uniforms.uProjection, false, f32);
+  f32.set(matrixStacks[GL_MODELVIEW].at(-1));
+  gl.uniformMatrix4fv(uniforms.uModelView, false, f32);
+  gl.uniform1i(uniforms.uLighting, lightingEnabled ? 1 : 0);
+  gl.uniform1f(uniforms.uPointSize, pointSize * pixelScale);
+  gl.drawArrays(mode, first, count);
+}
+
+const QUAD_TRIANGLE_CORNERS = [0, 1, 2, 0, 2, 3];
+
+function glEnd() {
+  let data = beginVertices;
+  let mode = beginMode;
+  if (mode === GL_QUADS) {
+    // two triangles per quad
+    triangleVertices.length = 0;
+    for (let q = 0; q < data.length / FLOATS_PER_VERTEX; q += 4)
+      for (const corner of QUAD_TRIANGLE_CORNERS)
+        for (let f = 0; f < FLOATS_PER_VERTEX; ++f)
+          triangleVertices.push(data[(q + corner) * FLOATS_PER_VERTEX + f]);
+    data = triangleVertices;
+    mode = gl.TRIANGLES;
+  }
+  const vertexCount = data.length / FLOATS_PER_VERTEX;
+  const vertices = new Float32Array(data);                  // a copy, because the scratch arrays are reused
+  if (currentList) {
+    currentList.batches.push({ mode, first: currentList.count, count: vertexCount });
+    currentList.count += vertexCount;
+    currentList.chunks.push(vertices);
+  } else {
+    gl.bindVertexArray(immediateVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, immediateBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.DYNAMIC_DRAW);
+    drawVertices(mode, 0, vertexCount);
+  }
+}
+
+function glNewList(list, mode) {
+  currentList = { chunks: [], batches: [], count: 0 };
+  displayLists.set(list, currentList);
+}
+
+// The display list becomes a static vertex buffer.
+function glEndList() {
+  const flat = new Float32Array(currentList.count * FLOATS_PER_VERTEX);
+  let offset = 0;
+  for (const chunk of currentList.chunks) {
+    flat.set(chunk, offset);
+    offset += chunk.length;
+  }
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, flat, gl.STATIC_DRAW);
+  currentList.vao = createVertexArray(buffer);
+  delete currentList.chunks;
+  currentList = null;
+}
+
+function glCallList(list) {
+  const l = displayLists.get(list);
+  gl.bindVertexArray(l.vao);
+  for (const b of l.batches)
+    drawVertices(b.mode, b.first, b.count);
+}
+
+// ---------------------------------------------------------------------------
+// main.c
+// ---------------------------------------------------------------------------
+
+const SHAPE_LIST_BASE = 1;
+const GROUND_LIST = 1000;                                   // not in the C code, see drawPlane
+const DEBUG_GRID_LIST = 1001;
+
+let tick = 0;
+let alive = true;
+let debugMode = false;
+
+// Debug camera state (the C code has these only in _DEBUG)
+let eyeX, eyeY, eyeZ, centerX, centerY, centerZ;
+let viewAngle, viewHeightOffs;
+let custX, custY;
+
+let currentCamTrack = 0;
+let currentCamTrackStartTick = 0;
+let nextCamTrackStartTick = 0x7fffffff;
+
+// The audio clock gives the time. audioStart is the context time of the first synth sample.
+let audioCtx = null;
+let audioStart = null;
+let audioNode = null;
+// The close of the previous context. A new start waits for it.
+let audioClosing = Promise.resolve();
+
+function audioTimeSec() {
+  // Position of the samples at the speakers: the output timestamp includes the output latency.
+  // While the context is not running, currentTime stands still and is the safe value.
+  const ts = audioCtx.getOutputTimestamp();
+  if (audioCtx.state === "running" && ts.contextTime > 0)
+    // The speakers cannot be ahead of the next block to render, so a stale timestamp is clamped.
+    return Math.min(ts.contextTime + (performance.now() - ts.performanceTime) / 1000, audioCtx.currentTime);
+  return audioCtx.currentTime;
+}
+
+function updateState() {
+  // The C code smoothed the tick for systems where the GetTickCount() resolution was worse than 1 ms.
+  // The audio clock does not need that, so the time is used as is. It never goes backwards.
+  if (audioStart !== null)
+    tick = Math.max(tick, Math.floor((audioTimeSec() - audioStart) * 1000));
+}
+
+function vector3Sub(dest, v1, v2) {
+  for (let a = 0; a < 3; ++a)
+    dest[a] = v1[a] - v2[a];
+}
+
+function superShapeMap(point, r1, r2, t, p) {
+  // sphere
+  point[0] = Math.cos(t) * Math.cos(p) / r1 / r2;
+  point[1] = Math.sin(t) * Math.cos(p) / r1 / r2;
+  point[2] = Math.sin(p) / r2;
+}
+
+function ssFunc(t, params, offset) {
+  const o = offset;
+  // inlinePow takes and returns float, so the C code rounds the sum before the outer pow
+  const sum = Math.fround(Math.pow(Math.abs(Math.cos(params[o] * t / 4)) / params[o + 1], params[o + 4]) +
+                          Math.pow(Math.abs(Math.sin(params[o] * t / 4)) / params[o + 2], params[o + 5]));
+  return Math.fround(Math.pow(sum, 1 / params[o + 3]));
+}
+
+// Renders a supershape.
+// Based on Paul Bourke's POV-Ray implementation.
+// http://astronomy.swin.edu.au/~pbourke/povray/supershape/
+function superShape(params) {
+  let i = 0;
+  const resol1 = params[SUPERSHAPE_PARAMS - 3];
+  const resol2 = params[SUPERSHAPE_PARAMS - 2];
+
+  const col = [0, 0, 0];
+  for (let temp = 0; temp < 3; ++temp)
+    col[temp] = ((rand() % 155) + 100) / 255;
+
+  glBegin(GL_QUADS);
+
+  // longitude -pi to pi
+  while (i < resol1) {
+    let j = resol2 / 4;   // for no mirrored bottom
+    const firstj = j;
+
+    // latitude 0 to pi/2 (org. -pi/2 to pi/2)
+    while (j < resol2 / 2) {
+      const powFixEpsilon = FLT_EPSILON;
+      const t1 = Math.fround(powFixEpsilon + -PI + i * 2 * PI / resol1);
+      const t2 = Math.fround(powFixEpsilon + -PI + (i + 1) * 2 * PI / resol1);
+      const p1 = Math.fround(-PI / 2 + j * 2 * PI / resol2);
+      const p2 = Math.fround(-PI / 2 + (j + 1) * 2 * PI / resol2);
+      const r0 = ssFunc(t1, params, 0);
+      const r1 = ssFunc(p1, params, 6);
+      const r2 = ssFunc(t2, params, 0);
+      const r3 = ssFunc(p2, params, 6);
+      if (r0 && r1 && r2 && r3) {
+        const pa = [0, 0, 0], pb = [0, 0, 0], pc = [0, 0, 0], pd = [0, 0, 0];
+
+        superShapeMap(pa, r0, r1, t1, p1);
+        superShapeMap(pb, r2, r1, t2, p1);
+        superShapeMap(pc, r2, r3, t2, p2);
+        superShapeMap(pd, r0, r3, t1, p2);
+
+        // kludge to set lower edge of the object to fixed level
+        if (j === firstj + 1)
+          pa[2] = pb[2] = 0;
+
+        const v1 = [0, 0, 0], v2 = [0, 0, 0], n = [0, 0, 0];
+        vector3Sub(v1, pb, pa);
+        vector3Sub(v2, pc, pa);
+
+        //   i    j    k      i    j
+        // v1.x v1.y v1.z | v1.x v1.y
+        // v2.x v2.y v2.z | v2.x v2.y
+
+        n[0] = v1[1] * v2[2] - v1[2] * v2[1];
+        n[1] = v1[2] * v2[0] - v1[0] * v2[2];
+        n[2] = v1[0] * v2[1] - v1[1] * v2[0];
+        // auto normalization is enabled (done in the vertex shader)
+
+        const ca = pa[2] + 0.5;
+
+        glNormal3fv(n);
+        glColor3f(ca * col[0], ca * col[1], ca * col[2]);
+        glVertex3fv(pa);
+        glVertex3fv(pb);
+        glVertex3fv(pc);
+        glVertex3fv(pd);
+      }
+      ++j;
+    }
+    ++i;
+  }
+  glEnd();
+}
+
+function app_init() {
+  prepareSuperShapeArray();
+
+  glEnable(GL_DEPTH_TEST);    // default is disabled
+  glEnable(GL_LIGHTING);
+
+  srand(15);
+
+  for (let a = 0; a < SUPERSHAPE_COUNT; ++a) {
+    glNewList(a + SHAPE_LIST_BASE, GL_COMPILE);
+    superShape(superShapes_opt[a]);
+    glEndList();
+  }
+
+  eyeX = 0;
+  eyeY = 5;
+  eyeZ = 1;
+  viewAngle = 0;
+  viewHeightOffs = -0.25;
+  custX = 0;
+  custY = 1;
+  centerX = centerY = centerZ = 0;
+}
+
+// Resets the per-run state, so that the intro can play again.
+function app_start() {
+  tick = 0;
+  alive = true;
+  currentCamTrack = 0;
+  currentCamTrackStartTick = 0;
+  nextCamTrackStartTick = 0x7fffffff;
+}
+
+function prepareFrame() {
+  glClearColor(0.1, 0.2, 0.3, 1);
+  glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  gluPerspective(45, WIDTH / HEIGHT, 0.1, 150);
+  glMatrixMode(GL_MODELVIEW);
+
+  glLoadIdentity();
+}
+
+function configureLightAndMaterial() {
+  const values = [
+    -4, 1, 1, 0, 0.07,
+    0.14, 0.35, 1, 1, 1,
+    1, -2, -1, 0, -4,
+    0, 0.07, 0.17, 0.14, 1,
+    0.4, 0, 1,
+  ];
+  // The C code passes pointers into values; here the offset is the second argument.
+  glLightfv(GL_LIGHT0 + 0, GL_POSITION, values, 0);
+  glLightfv(GL_LIGHT0 + 0, GL_DIFFUSE, values, 19);
+  glLightfv(GL_LIGHT0 + 1, GL_POSITION, values, 10);
+  glLightfv(GL_LIGHT0 + 1, GL_DIFFUSE, values, 4);
+  glLightfv(GL_LIGHT0 + 2, GL_POSITION, values, 12);
+  glLightfv(GL_LIGHT0 + 2, GL_DIFFUSE, values, 16);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, values, 7);
+
+  glMaterialf(GL_FRONT, GL_SHININESS, 60);
+}
+
+function drawModels(zScale) {
+  const translationScale = 9;
+
+  srand(9);
+
+  glScalef(1, 1, zScale);
+
+  for (let y = -5; y <= 5; ++y) {
+    for (let x = -5; x <= 5; ++x) {
+      const curShape = rand() % SUPERSHAPE_COUNT;
+      const buildingScale = superShapes_opt[curShape][SUPERSHAPE_PARAMS - 1];
+
+      glPushMatrix();
+      glTranslatef(x * translationScale, y * translationScale, 0);
+      glRotatef(rand(), 0, 0, 1);
+      glScalef(buildingScale, buildingScale, buildingScale);
+
+      glCallList(curShape + SHAPE_LIST_BASE);
+      glPopMatrix();
+    }
+  }
+
+  if (FLYING_SHIPS) {
+    for (let x = -2; x <= 2; ++x) {
+      const shipScale100 = translationScale * 500;
+      const offs100 = x * shipScale100 + (tick % shipScale100);
+      const offs = offs100 * 0.01;
+      glPushMatrix();
+      glTranslatef(offs, -4, 2);
+      glCallList(SHAPE_LIST_BASE + SUPERSHAPE_COUNT - 1);
+      glPopMatrix();
+      glPushMatrix();
+      glTranslatef(-4, offs, 4);
+      glRotatef(90, 0, 0, 1);
+      glCallList(SHAPE_LIST_BASE + SUPERSHAPE_COUNT - 1);
+      glPopMatrix();
+    }
+  }
+}
+
+// Debug mode manual camera. Returns true when the key is used.
+// The C code uses Windows virtual key codes, here the browser KeyboardEvent.code values.
+function app_keyDown(keyCode) {
+  const step = 0.5;
+  switch (keyCode) {
+    case "ArrowUp": eyeX += Math.cos(viewAngle) * step; eyeY += Math.sin(viewAngle) * step; break;
+    case "ArrowDown": eyeX -= Math.cos(viewAngle) * step; eyeY -= Math.sin(viewAngle) * step; break;
+    case "ArrowLeft": viewAngle += step * (2 * PI) / 32; break;
+    case "ArrowRight": viewAngle -= step * (2 * PI) / 32; break;
+    case "KeyA": eyeX += Math.cos(viewAngle + PI / 2) * step; eyeY += Math.sin(viewAngle + PI / 2) * step; break;
+    case "KeyD": eyeX += Math.cos(viewAngle - PI / 2) * step; eyeY += Math.sin(viewAngle - PI / 2) * step; break;
+    case "PageUp": eyeZ += step / 2; break;
+    case "PageDown": eyeZ -= step / 2; break;
+    case "KeyR": viewHeightOffs += step / 4; break;
+    case "KeyF": viewHeightOffs -= step / 4; break;
+
+    case "KeyJ": custX += step / 5; break;
+    case "KeyL": custX -= step / 5; break;
+    case "KeyI": custY -= step / 5; break;
+    case "KeyK": custY += step / 5; break;
+    case "KeyO": custX = centerX; custY = centerY; break;
+
+    case "Space":
+      // OutputDebugString in the C code
+      console.log(`eye: ${eyeX} ${eyeY} ${eyeZ}  center: ${centerX} ${centerY} ${centerZ}`);
+      console.log(`viewAngle: ${viewAngle}  viewHeightOffs: ${viewHeightOffs}  cust: ${custX} ${custY}`);
+      break;
+
+    default: return false;
+  }
+  return true;
+}
+
+function camTrack() {
+  const lerp = [0, 0, 0, 0, 0];
+  let eX, eY, eZ, cX, cY, cZ;
+
+  // A while loop, because many tracks can pass at once after the debug mode.
+  while (nextCamTrackStartTick <= tick && currentCamTrack < CAMTRACK_COUNT - 1) {
+    ++currentCamTrack;
+    currentCamTrackStartTick = nextCamTrackStartTick;
+    nextCamTrackStartTick = currentCamTrackStartTick + camTracks[currentCamTrack].len * CAMTRACK_LEN;
+  }
+  nextCamTrackStartTick = currentCamTrackStartTick + camTracks[currentCamTrack].len * CAMTRACK_LEN;
+
+  const cam = camTracks[currentCamTrack];
+  const trackPos = (tick - currentCamTrackStartTick) / (CAMTRACK_LEN * cam.len);
+
+  for (let a = 0; a < 5; ++a)
+    lerp[a] = (cam.src[a] + cam.dest[a] * trackPos) * 0.01;
+
+  if (cam.dist) {
+    const dist = cam.dist * 0.1;
+    cX = lerp[0];
+    cY = lerp[1];
+    cZ = lerp[2];
+    eX = cX - Math.cos(lerp[3]) * dist;
+    eY = cY - Math.sin(lerp[3]) * dist;
+    eZ = cZ - lerp[4];
+  } else {
+    eX = lerp[0];
+    eY = lerp[1];
+    eZ = lerp[2];
+    cX = eX + Math.cos(lerp[3]);
+    cY = eY + Math.sin(lerp[3]);
+    cZ = eZ + lerp[4];
+  }
+  gluLookAt(eX, eY, eZ, cX, cY, cZ, 0, 0, 1);
+
+  // The debug mode starts from the pose of the current track.
+  eyeX = eX;
+  eyeY = eY;
+  eyeZ = eZ;
+  centerX = cX;
+  centerY = cY;
+  centerZ = cZ;
+  custX = centerX;
+  custY = centerY;
+  viewAngle = lerp[3];
+  viewHeightOffs = lerp[4];
+}
+
+/* type 0 = ground plane
+ * type 1 = fade quad
+ */
+function drawPlane(type) {
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+  glDisable(GL_LIGHTING);
+
+  if (!type) {
+    // ground plane
+    // The C code draws the quads in immediate mode every frame, with the rand() state left by
+    // drawModels(-1). That state is the same in every frame, so the quads are recorded once.
+    if (!displayLists.has(GROUND_LIST)) {
+      const scale = 2;
+      glNewList(GROUND_LIST, GL_COMPILE);
+      glBegin(GL_QUADS);
+
+      for (let y = -50; y < 50; ++y) {
+        for (let x = -50; x < 50; ++x) {
+          const bl = (rand() & 95) + 81;
+          const bla = [bl, bl, bl];
+          if (GROUND_WOBBLE) {
+            const MAP = (x, y) => Math.cos(x * 2) * Math.sin(y * 4) * 0.75;
+            glColor3ubv(bla);
+            for (let a = 0; a < 4; ++a) {
+              const xm = x + ((a & 1) ^ ((a & 2) >> 1));
+              const ym = y + ((a & 2) >> 1);
+              const m = MAP(xm, ym);
+              glVertex2fv([xm * scale + m, ym * scale + m]);
+            }
+          } else {
+            glColor3ubv(bla);
+            glVertex2fv([x * scale, y * scale]);
+            glVertex2fv([(x + 1) * scale, y * scale]);
+            glVertex2fv([(x + 1) * scale, (y + 1) * scale]);
+            glVertex2fv([x * scale, (y + 1) * scale]);
+          }
+        }
+      }
+      glEnd();
+      glEndList();
+    }
+    glCallList(GROUND_LIST);
+  } else {
+    // fade quad
+    const beginFade = tick - currentCamTrackStartTick;
+    const endFade = nextCamTrackStartTick - tick;
+    const minFade = beginFade < endFade ? beginFade : endFade;
+
+    if (minFade < 1024) {
+      const fadeIntensity = Math.max(0, minFade) >> 2;
+      const fadeCol = [fadeIntensity, fadeIntensity, fadeIntensity];
+
+      // already in modelview
+      glLoadIdentity();
+
+      glMatrixMode(GL_PROJECTION);
+      glLoadIdentity();
+
+      glColor3ubv(fadeCol);
+      glBegin(GL_QUADS);
+      glVertex2i(-1, -1);
+      glVertex2i(1, -1);
+      glVertex2i(1, 1);
+      glVertex2i(-1, 1);
+      glEnd();
+
+      /* this leaves us in projection matrix mode
+       * but prepare for next frame will reset the matrix mode
+       */
+    }
+  }
+
+  glEnable(GL_LIGHTING);
+  glDisable(GL_BLEND);
+  glEnable(GL_DEPTH_TEST);
+}
+
+function world_render() {
+  updateState();
+
+  prepareFrame();
+
+  if (!debugMode) {
+    // The C code calls camTrack() first. The end is checked first here, because there is no track after the last.
+    if (tick >= INTRO_LENGTH) {
+      alive = false;
+      return;
+    }
+    camTrack();
+  } else {
+    // MANUAL_CAM
+    centerX = eyeX + Math.cos(viewAngle);
+    centerY = eyeY + Math.sin(viewAngle);
+    centerZ = eyeZ + viewHeightOffs;
+    gluLookAt(eyeX, eyeY, eyeZ,
+              centerX, centerY, centerZ,
+              0, 0, 1);
+  }
+
+  configureLightAndMaterial();
+
+  glPushMatrix();
+  drawModels(-1);
+  glPopMatrix();
+
+  drawPlane(0);
+
+  drawModels(1);
+
+  // fade. The camera track times are not valid in the debug mode, so there is no fade there.
+  if (!debugMode)
+    drawPlane(1);
+}
+
+// The OEM_FIXED_FONT of the C code: the 8x12 "Terminal" raster font of Windows (vgaoem.fon).
+// The glyphs for ASCII 32..126 were drawn with GDI TextOut and read back. Each glyph has 12 bytes,
+// one per row, the top bit is the left pixel. Rows 0 to 9 are above the baseline, rows 10 and 11 below.
+const FONT_WIDTH = 8, FONT_HEIGHT = 12, FONT_ASCENT = 10, FONT_FIRST_CHAR = 32;
+const FONT_BITMAPS = atob(
+  "AAAAAAAAAAAAAAAAADB4eHgwMAAwMAAAAGZmZiQAAAAAAAAAAGxs/mxsbP5sbAAAMDB8wMB4DAz4MDAAAAAAxMwYMGDMjAAAAHDY2HD63szcdgAAADAwMGAAAAAAAAAA" +
+  "AAwYMGBgYDAYDAAAAGAwGAwMDBgwYAAAAAAAZjz/PGYAAAAAAAAAGBh+GBgAAAAAAAAAAAAAAAA4OGAAAAAAAAD+AAAAAAAAAAAAAAAAAAA4OAAAAAACBgwYMGDAgAAA" +
+  "AHzGzt7W9ubGfAAAABAw8DAwMDAw/AAAAHjMzAwYMGDM/AAAAHjMDAw4DAzMeAAAAAwcPGzM/gwMHgAAAPzAwMD4DAzMeAAAADhgwMD4zMzMeAAAAP7GxgYMGDAwMAAA" +
+  "AHjMzOx43MzMeAAAAHjMzMx8GBgwcAAAAAAAODgAADg4AAAAAAAAODgAADg4GDAAAAwYMGDAYDAYDAAAAAAAAH4AfgAAAAAAAGAwGAwGDBgwYAAAAHjMDBgwMAAwMAAA" +
+  "AHzGxt7e3sDAfAAAADB4zMzM/MzMzAAAAPxmZmZ8ZmZm/AAAADxmxsDAwMZmPAAAAPhsZmZmZmZs+AAAAP5iYGR8ZGBi/gAAAP5mYmR8ZGBg8AAAADxmxsDAzsZmPgAA" +
+  "AMzMzMz8zMzMzAAAAHgwMDAwMDAweAAAAB4MDAwMzMzMeAAAAOZmbGx4bGxm5gAAAPBgYGBgYmZm/gAAAMbu/v7WxsbGxgAAAMbG5vb+3s7GxgAAADhsxsbGxsZsOAAA" +
+  "APxmZmZ8YGBg8AAAADhsxsbGzt58DB4AAPxmZmZ8bGZm5gAAAHjMzMBwGMzMeAAAAPy0MDAwMDAweAAAAMzMzMzMzMzMeAAAAMzMzMzMzMx4MAAAAMbGxsbW1mxsbAAA" +
+  "AMzMzHgweMzMzAAAAMzMzMx4MDAweAAAAP7OmBgwYGLG/gAAADwwMDAwMDAwPAAAAACAwGAwGAwGAgAAADwMDAwMDAwMPAAAEDhsxgAAAAAAAAAAAAAAAAAAAAAAAP8A" +
+  "MDAYAAAAAAAAAAAAAAAAAHgMfMzMdgAAAOBgYHxmZmZm3AAAAAAAAHjMwMDMeAAAABwMDHzMzMzMdgAAAAAAAHjM/MDMeAAAADhsYGD4YGBg8AAAAAAAAHbMzMx8DMx4" +
+  "AOBgYGx2ZmZm5gAAABgYAHgYGBgYfgAAAAwMADwMDAwMzMx4AOBgYGZseGxm5gAAAHgYGBgYGBgYfgAAAAAAAPzW1tbWxgAAAAAAAPjMzMzMzAAAAAAAAHjMzMzMeAAA" +
+  "AAAAANxmZmZmfGDwAAAAAHbMzMzMfAweAAAAAOxudmBg8AAAAAAAAHjMYBjMeAAAAAAgYPxgYGBsOAAAAAAAAMzMzMzMdgAAAAAAAMzMzMx4MAAAAAAAAMbG1tZsbAAA" +
+  "AAAAAMZsODhsxgAAAAAAAGZmZmY8DBjwAAAAAPyMGGDE/AAAABwwMGDAYDAwHAAAABgYGBgAGBgYGAAAAOAwMBgMGDAw4AAAAHPazgAAAAAAAAAA");
+
+// glRasterPos2f in the C code: the baseline start of the text in normalized device coordinates of the whole window.
+// Each font pixel is a square of an integer size at an integer position, so there is no smoothing.
+function debugText(nx, ny, str) {
+  const scale = Math.max(1, Math.round(window.devicePixelRatio || 1));
+  const left = Math.round((nx + 1) / 2 * hud.width);
+  const top = Math.round((1 - (ny + 1) / 2) * hud.height) - FONT_ASCENT * scale;
+  hudContext.beginPath();
+  for (let i = 0; i < str.length; ++i) {
+    const glyph = (str.charCodeAt(i) - FONT_FIRST_CHAR) * FONT_HEIGHT;
+    for (let row = 0; row < FONT_HEIGHT; ++row) {
+      const bits = FONT_BITMAPS.charCodeAt(glyph + row);   // NaN outside the font, which gives no pixels
+      for (let col = 0; col < FONT_WIDTH; ++col) {
+        if (bits & (0x80 >> col))
+          hudContext.rect(left + (i * FONT_WIDTH + col) * scale, top + row * scale, scale, scale);
+      }
+    }
+  }
+  hudContext.fill();
+}
+
+function app_render() {
+  world_render();
+  if (!alive || !debugMode)
+    return;
+
+  glDisable(GL_LIGHTING);
+
+  // MANUAL_CAM
+  glColor3f(1, 1, 1);
+  glPointSize(2);
+  if (!displayLists.has(DEBUG_GRID_LIST)) {
+    glNewList(DEBUG_GRID_LIST, GL_COMPILE);
+    glBegin(GL_POINTS);
+    for (let y = -50; y < 50; ++y) {
+      for (let x = -50; x < 50; ++x)
+        glVertex3f(x, y, 0);
+    }
+    glEnd();
+    glEndList();
+  }
+  glCallList(DEBUG_GRID_LIST);
+
+  glPointSize(2);
+  glBegin(GL_POINTS);
+  glVertex3d(centerX, centerY, centerZ);
+  glEnd();
+  glLineWidth(2);
+  glBegin(GL_LINES);
+  glColor3f(1, 1, 1);
+  glVertex3d(custX, custY, 0);
+  glVertex3d(custX, custY, 10);
+  glEnd();
+  glDisable(GL_DEPTH_TEST);
+  glBegin(GL_LINES);
+  glColor3f(0.5, 0.5, 0.5);
+  glVertex3d(custX, custY, -10);
+  glVertex3d(custX, custY, 0);
+  glEnd();
+
+  hudContext.clearRect(0, 0, hud.width, hud.height);
+  hudContext.fillStyle = "#fff";
+  debugText(-0.98, -0.8, `eye: ${eyeX.toFixed(6)}, ${eyeY.toFixed(6)}, ${eyeZ.toFixed(6)}`);
+  debugText(-0.98, -0.85, `center: ${centerX.toFixed(6)}, ${centerY.toFixed(6)}, ${centerZ.toFixed(6)}`);
+  debugText(-0.98, -0.9, `viewAngle: ${viewAngle.toFixed(6)}  viewHeightOffs: ${viewHeightOffs.toFixed(6)}`);
+  debugText(-0.98, -0.95, `cust: ${custX.toFixed(6)}, ${custY.toFixed(6)}`);
+
+  glEnable(GL_LIGHTING);
+
+  glEnable(GL_DEPTH_TEST);
+
+  // check for GL errors (MessageBox in the C code)
+  const error = gl.getError();
+  if (error !== gl.NO_ERROR)
+    console.error("GL error", error);
+}
+
+// ---------------------------------------------------------------------------
+// app.c: window, sound start and main loop, as browser code
+// ---------------------------------------------------------------------------
+
+const startScreen = document.getElementById("start");
+const startButton = document.getElementById("startButton");
+const stage = document.getElementById("stage");
+const errorText = document.getElementById("error");
+let running = false;
+let frameId = 0;
+
+// The canvas has the 4:3 shape of the original 640x480 window. CSS centers it with black bars.
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = hud.width = w;
+    canvas.height = hud.height = h;
+  }
+  pixelScale = h / HEIGHT;
+  gl.viewport(0, 0, w, h);
+}
+
+function mainLoop() {
+  if (!running)
+    return;
+  resize();
+  app_render();
+  if (!alive) {
+    stopIntro();
+    return;
+  }
+  frameId = requestAnimationFrame(mainLoop);
+}
+
+async function startIntro() {
+  startButton.disabled = true;
+  errorText.hidden = true;
+  // Reset before the context exists, so that the first block message of the worklet cannot arrive before the reset.
+  audioStart = null;
+  let url = null;
+  try {
+    await audioClosing.catch(() => {});
+    // The synth makes its samples at 44100 Hz. The context resamples them if the device needs it.
+    audioCtx = new AudioContext({ sampleRate: 44100 });
+    url = URL.createObjectURL(new Blob([document.getElementById("synth-source").textContent],
+                                       { type: "text/javascript" }));
+    await audioCtx.audioWorklet.addModule(url);
+    audioNode = new AudioWorkletNode(audioCtx, "san-angeles-synth", { outputChannelCount: [2] });
+    audioNode.port.onmessage = (e) => { audioStart = e.data.time; };
+    audioNode.connect(audioCtx.destination);
+    await audioCtx.resume();
+  } catch (error) {
+    console.error(error);
+    audioClosing = audioCtx?.close().catch(() => {}) ?? Promise.resolve();
+    audioCtx = null;
+    audioNode = null;
+    startButton.disabled = false;
+    errorText.textContent = "Audio could not start in this browser.";
+    errorText.hidden = false;
+    return;
+  } finally {
+    if (url)
+      URL.revokeObjectURL(url);
+  }
+  app_start();
+  running = true;
+  startScreen.hidden = true;
+  stage.hidden = false;
+  frameId = requestAnimationFrame(mainLoop);
+}
+
+function stopIntro() {
+  running = false;
+  cancelAnimationFrame(frameId);
+  debugMode = false;
+  hudContext.clearRect(0, 0, hud.width, hud.height);
+  // Drop every reference to the old audio, so that nothing can read its clock.
+  audioNode.port.onmessage = null;
+  audioNode.disconnect();
+  audioClosing = audioCtx.close().catch(() => {});
+  audioCtx = null;
+  audioNode = null;
+  stage.hidden = true;
+  startScreen.hidden = false;
+  startButton.textContent = "Click to play again";
+  startButton.disabled = false;
+  startButton.focus();
+}
+
+function toggleFullscreen() {
+  if (document.fullscreenElement)
+    document.exitFullscreen();
+  else
+    document.documentElement.requestFullscreen().catch(() => {});
+}
+
+startButton.addEventListener("click", startIntro);
+
+const moreDialog = document.getElementById("moreDialog");
+document.getElementById("moreButton").addEventListener("click", () => moreDialog.showModal());
+// Safari lacks closedby: close on a click on the backdrop. A click on the dialog padding is inside the rect.
+if (!("closedBy" in HTMLDialogElement.prototype)) {
+  moreDialog.addEventListener("click", (e) => {
+    if (e.target !== moreDialog) return;
+    const r = moreDialog.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
+      moreDialog.close();
+  });
+}
+
+// The port does not restore the context. The page must be loaded again.
+canvas.addEventListener("webglcontextlost", () => {
+  if (running)
+    stopIntro();
+  startButton.disabled = true;
+  errorText.textContent = "The graphics context was lost. Reload the page to play again.";
+  errorText.hidden = false;
+});
+stage.addEventListener("dblclick", toggleFullscreen);
+
+document.addEventListener("keydown", (e) => {
+  if (!running || e.ctrlKey || e.altKey || e.metaKey)
+    return;
+  if (e.code === "Escape") {
+    stopIntro();
+  } else if (e.code === "Enter") {
+    if (!e.repeat) toggleFullscreen();
+  } else if (e.code === DEBUG_KEY) {
+    if (!e.repeat) {
+      debugMode = !debugMode;
+      hudContext.clearRect(0, 0, hud.width, hud.height);
+    }
+  } else if (debugMode && app_keyDown(e.code)) {
+    e.preventDefault();
+  }
+});
+
+// The visual time comes from the audio clock, so suspending the audio also pauses the intro.
+document.addEventListener("visibilitychange", () => {
+  if (!audioCtx)
+    return;
+  if (document.hidden) audioCtx.suspend();
+  else audioCtx.resume();
+});
+
+// Start-up: one black clear. The C code clears and swaps 4 times unless MINIMAL is defined (app.c).
+try {
+  gl = canvas.getContext("webgl2", { antialias: true, alpha: false });
+  if (!gl)
+    throw new Error("WebGL2 is not available");
+  createProgram();
+  immediateBuffer = gl.createBuffer();
+  immediateVao = createVertexArray(immediateBuffer);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  app_init();
+} catch (error) {
+  console.error(error);
+  startButton.disabled = true;
+  errorText.textContent = "This browser cannot run the intro: " + error.message + ".";
+  errorText.hidden = false;
+}
+</script>
+
+<script type="text/plain" id="synth-source">
+"use strict";
+/*
+ * Port of synth.c (original version by ector, modified by tonic, heavily modified by !cube).
+ * It runs in an AudioWorklet. The C code fills a looping waveOut buffer ahead of the play cursor.
+ * The samples do not depend on that, so the worklet makes them on demand, in the same order.
+ * The C integer types are kept: int is 32 bit, uint32 uses >>> 0.
+ */
+
+const TEMPO = 7500;
+const TICK = TEMPO / 6;
+const SYNTH_RATE = 44100;     // nSamplesPerSec in the C code
+
+const SONGLENGTH = 41;
+const NUMPATTERNS = 22;       // USE_PAD_CHORDS and USE_HIHAT
+const PATTERNLENGTH = 16;     // must be power of 2
+const PATTERNLENGTH_SHIFT = 4;
+const NUMCHANNELS = 9;
+
+// Enabled as in synth.h: USE_VIBRATO, USE_HIHAT, USE_PAD_CHORDS. Not enabled: SURROUND, USE_CLIPPING, USE_NOTE_CUT.
+
+const PI = Math.fround(3.1415926535897932);
+
+// The C code casts a double to int. MSVC does this with _ftol: fistp stores a 64 bit integer and
+// the int is its low 32 bits. NaN and values of 2^63 or more store 0x8000000000000000, so the int is 0.
+// The drum channels rely on that: their vibSpeed is 0, so the vibrato is NaN and becomes 0.
+function toInt(x) {
+  return Math.abs(x) < 2 ** 63 ? Math.trunc(x) | 0 : 0;
+}
+
+// minimath.h rand(), with its own seed as the synth.c copy of the C code has
+let randseed = 0;
+function rand() {
+  randseed = (Math.imul(randseed, 0x343fd) + 0x269ec3) >>> 0;
+  return randseed >>> 16;
+}
+const synthrand = rand;
+
+// Globals
+let songPos = 0;    // 1/16 notes
+let songTime = 0;   // samples
+let tempoTime = 0;
+let tickTime = 0;
+
+const LFO_BASE = 0;
+const LFO_PHASE = PI;
+const LFO_RANGE = 128;
+const LFO_SPEED_MUL = 2 * PI;                // synth.c has no parentheses in LFO_SPEED, so the C code multiplies first
+const LFO_SPEED_DIV = TEMPO * 32;
+const fround = Math.fround;                 // the C code does these steps in float
+const DELTA_SCALE = fround(398126.91177592743764172335600907);
+
+const START_CHANNEL = 0;
+const END_CHANNEL = 9;
+
+const DELAY_CHANNELS = 4;
+const BASSDRUM_CHANNEL = 6;
+const SNARE_CHANNEL = 7;
+const HIHAT_CHANNEL = 8;
+const SHIFT_OPT = 12 - BASSDRUM_CHANNEL;
+
+const DELAYSIZE = TEMPO * 3;
+const delayBuffer = new Int32Array(DELAYSIZE);
+let delayPos = 0, cutAdd = 0;
+let n1 = 0;
+let n2 = 0;
+
+// s = sharp note
+const HS = 0x80;   // hardsync
+
+const xx = -1;
+const C1 = 0, Cs1 = 1, D1 = 2, Ds1 = 3, E1 = 4, F1 = 5, Fs1 = 6, G1 = 7, Gs1 = 8, A1 = 9, As1 = 10, B1 = 11;
+const C2 = 12, Cs2 = 13, D2 = 14, Ds2 = 15, E2 = 16, F2 = 17, Fs2 = 18, G2 = 19, Gs2 = 20, A2 = 21, As2 = 22, B2 = 23;
+const C3 = 24, Cs3 = 25, D3 = 26, Ds3 = 27, E3 = 28, F3 = 29, Fs3 = 30, G3 = 31, Gs3 = 32, A3 = 33, As3 = 34, B3 = 35;
+const C4 = 36, Cs4 = 37, D4 = 38, Ds4 = 39, E4 = 40, F4 = 41, Fs4 = 42, G4 = 43, Gs4 = 44, A4 = 45, As4 = 46, B4 = 47;
+const C5 = 48, Cs5 = 49, D5 = 50, Ds5 = 51, E5 = 52, F5 = 53, Fs5 = 54, G5 = 55, Gs5 = 56, A5 = 57, As5 = 58, B5 = 59;
+const C6 = 60, Cs6 = 61, D6 = 62, Ds6 = 63, E6 = 64, F6 = 65, Fs6 = 66, G6 = 67, Gs6 = 68, A6 = 69, As6 = 70, B6 = 71;
+const C7 = 72, Cs7 = 73, D7 = 74, Ds7 = 75, E7 = 76, F7 = 77, Fs7 = 78, G7 = 79, Gs7 = 80, A7 = 81, As7 = 82, B7 = 83;
+
+function soundStep() {
+  for (let i = START_CHANNEL; i < END_CHANNEL; ++i) {
+    const pat = seq[i][(songPos >> PATTERNLENGTH_SHIFT) % SONGLENGTH];   // current pattern (with looping)
+
+    if (pat) {
+      const note = patterns[pat - 1][songPos & (PATTERNLENGTH - 1)];     // current note
+
+      if (note !== xx) {
+        const ch = chans[i];
+        ch.note = (note & 0x7F);
+        ch.delta = fround(DELTA_SCALE * fround(Math.pow(2.0, fround((ch.note + ch.transpose) / 12.0)))) >>> 0;
+        ch.delta2 = (ch.delta + (ch.detune << 13)) >>> 0;
+        if (note & 0x80) {
+          ch.pos = 0;
+          ch.pos2 = ch.initPos2;
+        }
+        ch.envPos = 1 << 24;
+        ch.volume = (ch.originalVolume << 8);
+
+        if (!(note & 1) && (i === HIHAT_CHANNEL))
+          ch.volume = (ch.volume * 5) >> 3;
+      }
+    }
+  }
+
+  ++songPos;
+}
+
+// Makes count stereo samples into left and right.
+function sound_fillBuffer(left, right, count) {
+  let wave, c, v, t;
+
+  for (let i = 0; i < count; ++i) {
+    const lfoAngle = fround(LFO_PHASE + fround(fround(fround(songTime) * LFO_SPEED_MUL) / LFO_SPEED_DIV));
+    cutAdd = LFO_BASE + toInt(fround(LFO_RANGE * fround(Math.cos(lfoAngle))));
+
+    if (tempoTime === 0)
+      soundStep();    // step song forward
+
+    wave = 0;   // current sample
+    v = 0;
+
+    for (c = START_CHANNEL; c < END_CHANNEL; ++c) {
+      const ch = chans[c];
+      let sample, sample2;
+
+      const vibrato = toInt(Math.sin(fround(fround(songTime) / ch.vibSpeed)) * ch.vibRange);
+
+      sample = ch.pos >> 18;
+
+      sample2 = ch.pos2 >> 18;
+      sample = sample - sample2;
+
+      t = ch.pos >> 26;
+      ch.pos = (ch.pos + ch.delta + vibrato) | 0;         // go forward saw wave
+      ch.pos2 = (ch.pos2 + ch.delta2 + vibrato) | 0;      // go forward saw wave
+
+      if (t !== (ch.pos >> 26)) {
+        if (c === SNARE_CHANNEL)
+          n1 = synthrand() & 0x3fff;
+        else if (c === HIHAT_CHANNEL)
+          n2 = synthrand() & 0x3fff;
+      }
+
+      ch.envPos -= ch.envPos >> ch.envShift;
+
+      if (c === DELAY_CHANNELS) {
+        //-- DELAY -------------------------------------------
+        // do delay effect here so that it will not affect drums
+        v = (delayBuffer[delayPos] * 5) >> 3;
+        delayBuffer[delayPos] = v + wave;
+        ++delayPos;
+        if (delayPos >= DELAYSIZE)
+          delayPos = 0;
+        //-- END DELAY -------------------------------------------
+      }
+
+      if (c === BASSDRUM_CHANNEL || c === SNARE_CHANNEL) {
+        ch.delta = (ch.delta - (ch.delta >>> (c + SHIFT_OPT))) >>> 0;
+        ch.delta2 = ch.delta;
+        if (c === SNARE_CHANNEL) sample += n1;
+      } else if (c === HIHAT_CHANNEL) {
+        sample = n2;
+      }
+
+      // volume
+      sample = (sample * (ch.volume >> 8)) >> 8;
+
+      if (tickTime === 0) {
+        ch.volume -= ch.volumeFade;
+        if (ch.volume < 0) ch.volume = 0;
+      }
+
+      {
+        let cut = ch.cutoff + (ch.envPos >> ch.envShift2);
+        if (ch.lfo)
+          cut += cutAdd;
+
+        if (cut < 10)
+          cut = 10;
+
+        ch.filterDelta = (ch.filterDelta * ch.resonance) >> 8;
+        ch.filterDelta = (ch.filterDelta + (((sample - ch.filterPos) * cut) >> 11)) | 0;
+        ch.filterPos = (ch.filterPos + ch.filterDelta) | 0;
+      }
+
+      wave = (wave + ch.filterPos) | 0;
+    }
+
+    {
+      // int to short wraps, there is no clipping
+      const sample = ((wave + v) >> 1) << 16 >> 16;
+      left[i] = right[i] = sample / 32768;
+    }
+
+    ++songTime;
+    if (++tempoTime > TEMPO)
+      tempoTime = 0;
+    if (++tickTime > TICK)
+      tickTime = 0;
+  }
+}
+
+const PAD_RESO = 100;
+const PAD_VOLUME = 180;
+const PAD_FADEOUT = 220;
+
+const CHORD_RESO = 240;
+const CHORD_VOLUME = 60;
+const CHORD_FADEOUT = 80;
+const CHORD_TRANSPOSE = 3 * 12;
+const CHORD_TYPE = 1;
+const CHORD_LFO = 1;
+const CHORD_ENVSHIFT = 24;
+const CHORD_ENVSHIFT2 = 17;
+const CHORD_DETUNE = 4;
+const CHORD_INITPOS2 = 0;
+const CHORD_VIBSPEED = 1600;
+const CHORD_VIBRANGE = 400000;
+
+// MelodyChannel of synth.h. The arguments are in the order of the C initializers.
+function MelodyChannel(cutoff, resonance, transpose, lfo, type, envShift, envShift2, detune,
+                       originalVolume, volumeFade, vibSpeed, vibRange, initPos2) {
+  return {
+    // Filter properties
+    cutoff,
+    resonance,
+    transpose,      // transpose in octaves
+    lfo,            // filter sweep
+    type,           // saw/square wave (bits 0,1)
+    envShift,
+    envShift2,
+    detune,
+
+    originalVolume,
+    volume: 0,
+    volumeFade,
+
+    vibSpeed,
+    vibRange,
+
+    initPos2,       // oscillator2 init position
+    pos: 0,         // oscillator position
+    delta: 0,       // its speed
+    pos2: 0,        // oscillator2 position
+    delta2: 0,      // its speed
+
+    envPos: 0,      // for envelope
+    filterPos: 0,
+    filterDelta: 0,
+
+    note: 0,        // 0 = off
+  };
+}
+
+const chans = [
+  /* PLUCK */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        120,
+    /*transpose*/   (2 * 12),
+    /*lfo*/         0,
+    /*type*/        1,
+    /*envshift*/    14,
+    /*envshift2*/   13,
+    /*detune*/      6,
+    /*volume*/      180,
+    /*fadeout*/     (10 << 8),
+    /*vibSpeed*/    1600,
+    /*vibRange*/    150000,
+    /*initPos2*/    (8192 << 18)),
+
+  /* CHORD1 */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        CHORD_RESO,
+    /*transpose*/   CHORD_TRANSPOSE,
+    /*lfo*/         CHORD_LFO,
+    /*type*/        CHORD_TYPE,
+    /*envshift*/    CHORD_ENVSHIFT,
+    /*envshift2*/   CHORD_ENVSHIFT2,
+    /*detune*/      CHORD_DETUNE,
+    /*volume*/      CHORD_VOLUME,
+    /*fadeout*/     CHORD_FADEOUT,
+    /*vibSpeed*/    CHORD_VIBSPEED,
+    /*vibRange*/    CHORD_VIBRANGE,
+    /*initPos2*/    CHORD_INITPOS2),
+
+  /* CHORD2 */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        CHORD_RESO,
+    /*transpose*/   CHORD_TRANSPOSE,
+    /*lfo*/         CHORD_LFO,
+    /*type*/        CHORD_TYPE,
+    /*envshift*/    CHORD_ENVSHIFT,
+    /*envshift2*/   CHORD_ENVSHIFT2,
+    /*detune*/      CHORD_DETUNE,
+    /*volume*/      CHORD_VOLUME,
+    /*fadeout*/     CHORD_FADEOUT,
+    /*vibSpeed*/    CHORD_VIBSPEED,
+    /*vibRange*/    CHORD_VIBRANGE,
+    /*initPos2*/    CHORD_INITPOS2),
+
+  /* CHORD3 */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        CHORD_RESO,
+    /*transpose*/   CHORD_TRANSPOSE,
+    /*lfo*/         CHORD_LFO,
+    /*type*/        CHORD_TYPE,
+    /*envshift*/    CHORD_ENVSHIFT,
+    /*envshift2*/   CHORD_ENVSHIFT2,
+    /*detune*/      CHORD_DETUNE,
+    /*volume*/      CHORD_VOLUME,
+    /*fadeout*/     CHORD_FADEOUT,
+    /*vibSpeed*/    CHORD_VIBSPEED,
+    /*vibRange*/    CHORD_VIBRANGE,
+    /*initPos2*/    CHORD_INITPOS2),
+
+  /* PAD OCTAVE 1 */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        PAD_RESO,
+    /*transpose*/   (-1 * 12),
+    /*lfo*/         1,
+    /*type*/        1,
+    /*envshift*/    24,
+    /*envshift2*/   17,
+    /*detune*/      6,
+    /*volume*/      PAD_VOLUME,
+    /*fadeout*/     PAD_FADEOUT,
+    /*vibSpeed*/    1600,
+    /*vibRange*/    150000,
+    /*initPos2*/    (8192 << 18)),
+
+  /* PAD OCTAVE 2 */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        PAD_RESO,
+    /*transpose*/   0,
+    /*lfo*/         1,
+    /*type*/        1,
+    /*envshift*/    24,
+    /*envshift2*/   17,
+    /*detune*/      6,
+    /*volume*/      PAD_VOLUME,
+    /*fadeout*/     PAD_FADEOUT,
+    /*vibSpeed*/    1600,
+    /*vibRange*/    150000,
+    /*initPos2*/    (8192 << 18)),
+
+  /* BASSDRUM */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        0,
+    /*transpose*/   (6 * 12),
+    /*lfo*/         0,
+    /*type*/        1,
+    /*envshift*/    24,
+    /*envshift2*/   16,
+    /*detune*/      0,
+    /*volume*/      200,
+    /*fadeout*/     (17 << 8),
+    /*vibSpeed*/    0,
+    /*vibRange*/    0,
+    /*initPos2*/    (8192 << 18)),
+
+  /* SNARE */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        230,
+    /*transpose*/   (5 * 12),
+    /*lfo*/         0,
+    /*type*/        1,
+    /*envshift*/    24,
+    /*envshift2*/   16,
+    /*detune*/      0,
+    /*volume*/      150,
+    /*fadeout*/     (10 << 8),
+    /*vibSpeed*/    0,
+    /*vibRange*/    0,
+    /*initPos2*/    (8192 << 18)),
+
+  /* HIHAT */
+  MelodyChannel(
+    /*cutoff*/      0,
+    /*reso*/        0,
+    /*transpose*/   (7 * 12),
+    /*lfo*/         0,
+    /*type*/        1,
+    /*envshift*/    24,
+    /*envshift2*/   15,
+    /*detune*/      0,
+    /*volume*/      165,
+    /*fadeout*/     (60 << 8),
+    /*vibSpeed*/    0,
+    /*vibRange*/    0,
+    /*initPos2*/    0),
+];
+
+const L1 = 1;
+const L2 = 2;
+const L3 = 3;
+const L4 = 4;
+const L5 = 5;
+const L6 = 6;
+const L7 = 7;
+const L8 = 8;
+const L9 = 9;
+
+const C_G4 = 10;
+const C_As4 = 11;
+const C_F5 = 12;
+const C_A4 = 13;
+const C_G5 = 14;
+const C_A5 = 15;
+const C_D5 = 16;
+const C_Ds5 = 17;
+
+// The C names are B1 and B2. They are note names here, so the drum patterns are BD1 and BD2.
+const BD1 = 18;
+const BD2 = 19;
+const S1 = 20;
+const S2 = 21;
+const H = 22;
+
+// song orders with pattern for each channel
+// time goes horizontally, 0 = no pattern
+const seq = [
+  [ L1, 0,L2, 0,L2, 0,L3, 0,L4, 0,L5, 0,L2, 0,L3, 0,L4, 0,L5, 0,L2, 0,L3, 0,L4, 0,L5, 0,L6, 0,L7, 0,L8, 0,L9, 0,L1, 0, 0, 0, 0 ],
+  [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,C_G4, 0,C_G4, 0,C_G4, 0,C_G4, 0,C_As4, 0,C_As4, 0,C_As4, 0,C_As4, 0, 0, 0, 0, 0, 0 ],
+  [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,C_As4, 0,C_A4, 0,C_As4, 0,C_As4, 0,C_D5, 0,C_D5, 0,C_Ds5, 0,C_Ds5, 0, 0, 0, 0, 0, 0 ],
+  [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,C_F5, 0,C_F5, 0,C_G5, 0,C_A5, 0,C_G5, 0,C_F5, 0,C_G5, 0,C_F5, 0, 0, 0, 0, 0, 0 ],
+  [  0, 0, 0, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0, 0 ],
+  [  0, 0, 0, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0,C_Ds5, 0,C_Ds5, 0,C_G5, 0,C_G5, 0, 0 ],
+  [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,BD1,BD1,BD2,BD1,BD1,BD1,BD2,BD1,BD1,BD1,BD2,BD1,BD1,BD1,BD2,BD1,BD1,BD1,BD2,BD1,BD1,BD1,BD2,BD1, 0, 0, 0, 0, 0 ],
+  [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,S1,S1,S1,S2,S1,S1,S1,S2,S1,S1,S1,S2,S1,S1,S1,S2,S1,S1,S1,S2,S1,S1,S1,S2, 0, 0, 0, 0, 0 ],
+  [  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, H, 0, 0, 0, 0, 0 ],
+];
+
+// patterns (x = no note)
+
+const BASSDRUM = C1 | HS;
+const SNARE = D2 | HS;
+const HIHAT1 = Cs1 | HS;
+const HIHAT2 = C1 | HS;
+
+const patterns = [
+  // sekv
+  [ G4 | HS, xx, xx, xx, As4, xx, xx, xx, A4 , xx, xx, xx, xx, xx, xx, xx ],
+  [ G4     , xx, xx, xx, As4, xx, xx, xx, A4 , xx, xx, xx, xx, xx, xx, xx ],
+  [ A4     , xx, xx, xx, C5 , xx, xx, xx, As4, xx, xx, xx, xx, xx, xx, xx ],
+  [ C5     , xx, xx, xx, G5 , xx, xx, xx, F5 , xx, xx, xx, xx, xx, xx, xx ],
+  [ A5     , xx, xx, xx, As5, xx, xx, xx, G5 , xx, xx, xx, xx, xx, xx, xx ],
+  [ A5     , xx, xx, xx, C6 , xx, xx, xx, As5, xx, xx, xx, xx, xx, xx, xx ],
+  [ C6     , xx, xx, xx, Ds6, xx, xx, xx, D6 , xx, xx, xx, xx, xx, xx, xx ],
+  [ G6     , xx, xx, xx, F6 , xx, xx, xx, As5, xx, xx, xx, xx, xx, xx, xx ],
+  [ Ds6    , xx, xx, xx, D6 , xx, xx, xx, G5 , xx, xx, xx, xx, xx, xx, xx ],
+
+  // chords
+  [ G4 | HS, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+  [ As4 | HS, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+  [ F5 | HS, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+  [ A4 | HS, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+  [ G5 | HS, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+  [ A5 | HS, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+  [ D5 | HS , xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+  [ Ds5 | HS, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx, xx ],
+
+  // drums
+  [ BASSDRUM, xx, xx, xx, xx, xx, xx, xx, xx, xx, BASSDRUM, xx, xx, BASSDRUM, xx, xx ],
+  [ BASSDRUM, xx, xx, xx, xx, xx, xx, xx, BASSDRUM, xx, BASSDRUM, xx, xx, BASSDRUM, xx, xx ],
+  [ xx, xx, xx, xx, SNARE, xx, xx, xx, xx, xx, xx, xx, SNARE, xx, xx, xx ],
+  [ xx, xx, xx, xx, SNARE, xx, xx, xx, xx, xx, xx, xx, SNARE, xx, xx, SNARE ],
+  [ HIHAT1, HIHAT2, HIHAT1, HIHAT2, HIHAT1, HIHAT2, HIHAT1, HIHAT2, HIHAT1, HIHAT2, HIHAT1, HIHAT2, HIHAT1, HIHAT2, HIHAT1, HIHAT2 ],
+];
+
+// The worklet part. The AudioWorklet global sampleRate can differ from SYNTH_RATE when the browser
+// ignores the requested rate. Then the synth output is resampled with linear interpolation.
+class SanAngelesSynth extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.started = false;
+    this.frac = 1;                        // position between prev and next, in synth samples
+    this.prev = 0;
+    this.next = 0;
+    this.one = new Float32Array(1);
+  }
+
+  process(inputs, outputs) {
+    const [left, right] = outputs[0];
+    if (!this.started) {
+      this.started = true;
+      this.port.postMessage({ time: currentTime });   // the context time of the first sample
+    }
+    if (sampleRate === SYNTH_RATE) {
+      sound_fillBuffer(left, right, left.length);
+    } else {
+      const step = SYNTH_RATE / sampleRate;
+      for (let i = 0; i < left.length; ++i) {
+        while (this.frac >= 1) {
+          this.prev = this.next;
+          sound_fillBuffer(this.one, this.one, 1);
+          this.next = this.one[0];
+          this.frac -= 1;
+        }
+        left[i] = this.prev + (this.next - this.prev) * this.frac;
+        this.frac += step;
+      }
+      right.set(left);
+    }
+    return true;
+  }
+}
+
+registerProcessor("san-angeles-synth", SanAngelesSynth);
+</script>
+
+</body>
+</html>
